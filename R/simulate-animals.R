@@ -31,7 +31,12 @@ simulate_dams <- function(dams_per_group, ..., batches = 1, simulations = 1) {
   }
 
   # Convert each item in biogroups to a factor
-  biogroups <- lapply(biogroups, function(.x) factor(.x, levels = .x))
+  # biogroups <- lapply(biogroups, function(.x) factor(.x, levels = .x))
+
+  biogroups <- lapply(biogroups, function(x) {
+      vctrs::new_factor(x = vctrs::vec_seq_along(x), levels = rlang::names2(x))
+    }
+  )
 
   # A bit of Math to determine how many dams per batch and then how many are
   # left over (in the case the number of dams per biogroup is not divisible by batches)
@@ -64,7 +69,8 @@ simulate_dams <- function(dams_per_group, ..., batches = 1, simulations = 1) {
   # Add a unique integer ID while grouping by the 'simulation' column
   litter_ids <- integer(nrow(dams))
   group_locs <- vctrs::vec_group_loc(dams$simulation)$loc
-  litter_ids[unlist(group_locs)] <- unlist(lapply(group_locs, seq_along))
+  # Adding use.names = FALSE to unlist can speed up the process
+  litter_ids[unlist(group_locs, use.names = FALSE)] <- unlist(lapply(group_locs, seq_along), use.names = FALSE)
   dams$litter <- factor(litter_ids, levels = seq_len(max(litter_ids)))
 
   dams
@@ -146,13 +152,15 @@ simulate_ideal_litters <- function(
   check_unique_names(args_unlisted)
   check_integer_vector(args_unlisted)
 
-  # Create a list to store the results
-  biogroups <- vector("list", length(args))
-  names(biogroups) <- names(args)
-  for (i in seq_along(args)) {
-    .arg <- args[[i]]
-    biogroups[[i]] <- factor(rep(rlang::names2(.arg), .arg), levels = rlang::names2(.arg))
-  }
+  # Conversion of biogroups to factors to avoid converting even larger items to
+  # factors later.
+  biogroups <- lapply(args, function(.x) {
+      vctrs::new_factor(
+        vctrs::vec_rep_each(vctrs::vec_seq_along(.x), times = .x),
+        levels = rlang::names2(.x)
+      )
+    }
+  )
 
   # Expand all combinations of items
   # Generate the Cartesian product -- all possible pairings of biological groups
@@ -203,7 +211,7 @@ simulate_repeated_measurements <- function(animals, replicates, grouping_var, id
   # Create an ID column
   ids <- integer(nrow(animals))
   group_locs <- vctrs::vec_group_loc(animals[[grouping_var]])$loc
-  ids[unlist(group_locs)] <- unlist(lapply(group_locs, seq_along))
+  ids[unlist(group_locs, use.names = FALSE)] <- unlist(lapply(group_locs, seq_along), use.names = FALSE)
   animals[[id_col]] <- factor(ids, levels = seq_len(max(ids)))
 
   # Create a data frame with the replicates
