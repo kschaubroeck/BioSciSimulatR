@@ -370,11 +370,12 @@ build_correlation_matrix <- function(correlation_data, arg = rlang::caller_arg(c
 # Simple function to assign items randomly to groups using the probability of
 # each group and a multinomial distribution (generalized binomial distribution)
 generate_multinomial_factor <- function(n, prob_vector) {
-  factor(
-    names(prob_vector)[
-      max.col(t(stats::rmultinom(n = n, size = 1, prob = prob_vector)))
-    ],
-    levels = names(prob_vector)
-  )
+  # Performance improvment: Random sample with the sample function and a probability
+  # vector and sample directly from the factor itself
+  factor(names(prob_vector), levels = names(prob_vector))[
+    sample.int(
+      length(prob_vector), replace = TRUE, size = n, prob = prob_vector
+    )
+  ]
 }
 

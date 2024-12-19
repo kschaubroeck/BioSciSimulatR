@@ -120,13 +120,7 @@ simulate_real_litters <- function(
 
   # Repeat each row the correct number of times to simulate offspring from litters
   offspring <- vctrs::vec_rep_each(dams, litter_size)
-
-  # Add a new column for each name in the ... arguments and simulate from a multinomial distribution
-  for (arg_name in rlang::names2(args)) {
-    offspring[[arg_name]] <- generate_multinomial_factor(nrow(offspring), args[[arg_name]])
-  }
-
-  # Return
+  offspring[rlang::names2(args)] <- lapply(args, function(.arg) generate_multinomial_factor(nrow(offspring), .arg))
   offspring
 }
 
@@ -163,13 +157,18 @@ simulate_ideal_litters <- function(
   # Expand all combinations of items
   # Generate the Cartesian product -- all possible pairings of biological groups
   offspring <- create_cartesian_product(
-    litter = dams$litter, # factor(levels(dams$litter), levels = levels(dams$litter)),
+    litter = factor(levels(dams$litter), levels = levels(dams$litter)), # Use a minimal factor
     !!!biogroups,
     .times = offspring_per_litter_group
   )
 
-  # Merge two items
-  merge(offspring, dams, by = "litter")
+  # Performance: Replace merge with some vector matcvhing and expansion
+  it <- vctrs::vec_locate_matches(haystack = offspring$litter, needles = dams$litter)
+  vctrs::vec_cbind(
+    vctrs::vec_slice(dams[, setdiff(names(dams), "litter"), drop = FALSE], it$needles),
+    vctrs::vec_slice(offspring[, setdiff(names(offspring), "litter"), drop = FALSE], it$haystack),
+    litter = vctrs::vec_slice(offspring$litter, it$haystack)
+  )
 }
 
 #' Simulate Repeated Measurements
