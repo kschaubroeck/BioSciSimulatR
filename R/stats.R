@@ -56,7 +56,15 @@ model_response <- function(
   }
 
   # Generate model matrix from formula and data
-  model_matrix <- Matrix::sparse.model.matrix(fixed_effects_formula, data = data)
+  # Performance Improvement: Drop the attempt to name rows. This speeds up this step
+  # by ~500ms in a few of my tests (16 million rows). However, some downstream steps are improved
+  # even more, particularity when subsetting. Overall, there was about a ~5 second improvement
+  # in simulation time these extreme simulations.
+  model_matrix <- Matrix::sparse.model.matrix(
+    fixed_effects_formula,
+    data = data,
+    row.names = FALSE
+  )
   colnames(model_matrix)[colnames(model_matrix) == "(Intercept)"] <- "Intercept"
 
   # Make sure all beta values are in the model matrix
@@ -142,7 +150,10 @@ calculate_expectation <- function(
 
       # We add the new effects to the random components matrix using the built in
       # functions from the Matrix Package for sparse matrices.
-      random_effects_component <- random_effects_component + Matrix::crossprod(Matrix::fac2sparse(data[[group]]), group_effect)
+      # Performance Improvement: IN my large simulations (16 million items from 1000 simulations), the
+      # drop unused levels component speeds up the process. I am guessing since it doesn't try to fiddle with a
+      # a large factor.
+      random_effects_component <- random_effects_component + Matrix::crossprod(Matrix::fac2sparse(data[[group]], drop.unused.levels = FALSE), group_effect)
     }
 
     # Now, we can do the multiplication ONLY once and it will apply to all terms correctly
