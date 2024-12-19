@@ -126,8 +126,9 @@ calculate_expectation <- function(
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
   if (!rlang::is_empty(random_effects_sd)) {
-    # Initialize the matrix to hold the random effects
-    random_effects_component <- matrix(0, nrow = nrow(model_matrix), ncol = length(random_effects_sd))
+    # Make a sparse matrix whose dimensions match the model matrix. This will be the
+    # sum of all the random effects of each sample/term.
+    random_effects_component <- Matrix::Matrix(0, nrow = nrow(model_matrix), ncol = ncol(model_matrix), sparse = TRUE)
 
     for (i in seq_along(random_effects_sd)) {
       group <- names(random_effects_sd)[i]
@@ -139,13 +140,13 @@ calculate_expectation <- function(
         random_effects_corr_matrix[[group]]
       )
 
-      # Multiply these together and get the sum for each row to determine the effect
-      random_effects_component[, i] <- Matrix::rowSums(
-        (factor2matrix(data, group) %*% group_effect) * model_matrix
-      )
+      # We add the new effects to the random components matrix using the built in
+      # functions from the Matrix Package for sparse matrices.
+      random_effects_component <- random_effects_component + Matrix::crossprod(Matrix::fac2sparse(data[[group]]), group_effect)
     }
 
-    random_effects_component <- Matrix::rowSums(random_effects_component)
+    # Now, we can do the multiplication ONLY once and it will apply to all terms correctly
+    random_effects_component <- Matrix::rowSums(random_effects_component * model_matrix)
   } else {
     random_effects_component <- 0
   }
