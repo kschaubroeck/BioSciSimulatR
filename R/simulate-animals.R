@@ -31,10 +31,8 @@ simulate_dams <- function(dams_per_group, ..., batches = 1, simulations = 1) {
   }
 
   # Convert each item in biogroups to a factor
-  # biogroups <- lapply(biogroups, function(.x) factor(.x, levels = .x))
-
   biogroups <- lapply(biogroups, function(x) {
-      vctrs::new_factor(x = vctrs::vec_seq_along(x), levels = rlang::names2(x))
+      vctrs::new_factor(vctrs::vec_seq_along(x), levels = x)
     }
   )
 
@@ -119,10 +117,10 @@ simulate_real_litters <- function(
   # Pick a size for each litter
   # 1) Select whatever is smaller: the generated size of the max litter size
   # 2) Then, select whatever is larger: the prior size or the min litter size
-  litter_size <- pmax(
-    pmin(stats::rpois(nrow(dams), mean_litter_size), max_litter_size),
-    min_litter_size
-  )
+  # Avoiding pmin and pmax seems to produce performance improvments
+  litter_size <- stats::rpois(nrow(dams), mean_litter_size)
+  litter_size[litter_size > max_litter_size] <- max_litter_size
+  litter_size[litter_size < min_litter_size] <- min_litter_size
 
   # Repeat each row the correct number of times to simulate offspring from litters
   offspring <- vctrs::vec_rep_each(dams, litter_size)
