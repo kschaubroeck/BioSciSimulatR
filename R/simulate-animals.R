@@ -163,7 +163,7 @@ simulate_ideal_litters <- function(
   # Expand all combinations of items
   # Generate the Cartesian product -- all possible pairings of biological groups
   offspring <- create_cartesian_product(
-    litter = dams$litter, # factor(levels(dams$litter), levels = levels(dams$litter)),
+    litter = factor(levels(dams$litter), levels = levels(dams$litter)),
     !!!biogroups,
     .times = offspring_per_litter_group
   )
